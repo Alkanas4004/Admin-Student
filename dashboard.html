@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>لوحة التحكم</title>
+<style>
+body{background:#0f0f0f;color:#fff;font-family:Cairo;padding:20px}
+input,button{padding:10px;margin:5px}
+</style>
+</head>
+
+<body>
+<h2>👨‍💼 لوحة التحكم</h2>
+
+<input id="lecName" placeholder="اسم المحاضرة">
+<input id="videoUrl" placeholder="رابط الفيديو">
+<select id="year">
+  <option value="first">أولى</option>
+  <option value="second">تانية</option>
+</select>
+<button id="add">إضافة</button>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, addDoc, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey:"AIzaSyAFrf9kRQez8ltkvd66_BQZPmARc1fW6y8",
+  projectId:"date-student"
+});
+
+const db = getFirestore(app);
+
+add.onclick = async()=>{
+  await addDoc(collection(db,"lectures"),{
+    name: lecName.value,
+    videoUrl: videoUrl.value,
+    yearId: year.value
+  });
+  alert("✔ تم الإضافة");
+};
+</script>
+</body>
+</html>
