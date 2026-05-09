@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>THE BEST | منصة تعليمية</title>
+
+<!-- Google Font -->
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+
+<style>
+* {
+  box-sizing: border-box;
+  font-family: 'Cairo', sans-serif;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(135deg, #0f0f0f, #1a1a1a);
+  color: #fff;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.container {
+  background: #111;
+  padding: 40px;
+  border-radius: 18px;
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  box-shadow: 0 0 40px rgba(255,215,0,0.15);
+}
+
+.logo {
+  font-size: 28px;
+  font-weight: 900;
+  color: #ffd700;
+  margin-bottom: 10px;
+}
+
+.subtitle {
+  color: #aaa;
+  margin-bottom: 30px;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.btn-login {
+  background: #ffd700;
+  color: #000;
+}
+
+.btn-login:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(255,215,0,0.4);
+}
+
+.loader {
+  margin-top: 20px;
+  display: none;
+  color: #00ff99;
+}
+
+.footer {
+  margin-top: 25px;
+  font-size: 13px;
+  color: #777;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <div class="logo">THE BEST</div>
+  <div class="subtitle">منصة تعليمية احترافية</div>
+
+  <button class="btn-login" id="loginBtn">تسجيل الدخول</button>
+
+  <div class="loader" id="loader">⏳ جاري التحقق...</div>
+
+  <div class="footer">
+    © 2026 THE BEST
+  </div>
+</div>
+
+<!-- ================= FIREBASE ================= -->
+<script type="module">
+/* 🔥 Firebase Imports */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { 
+  getAuth, 
+  onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { 
+  getFirestore, 
+  doc, 
+  getDoc 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+/* 🔥 Firebase Config */
+const firebaseConfig = {
+  apiKey: "AIzaSyAFrf9kRQez8ltkvd66_BQZPmARc1fW6y8",
+  authDomain: "date-student.firebaseapp.com",
+  projectId: "date-student",
+  storageBucket: "date-student.firebasestorage.app",
+  messagingSenderId: "952213529741",
+  appId: "1:952213529741:web:7a8d8da275214b5754eec4",
+  measurementId: "G-CNR9HYEGGF"
+};
+
+/* 🔥 Initialize */
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+/* UI */
+const loginBtn = document.getElementById("loginBtn");
+const loader = document.getElementById("loader");
+
+/* 👉 زر تسجيل الدخول */
+loginBtn.onclick = () => {
+  window.location.href = "login.html";
+};
+
+/* 🔐 فحص الجلسة */
+onAuthStateChanged(auth, async (user) => {
+  if (!user) return;
+
+  loader.style.display = "block";
+  loginBtn.style.display = "none";
+
+  try {
+    const userRef = doc(db, "users", user.uid);
+    const snap = await getDoc(userRef);
+
+    if (!snap.exists()) {
+      alert("لا يوجد حساب مرتبط");
+      return;
+    }
+
+    const userData = snap.data();
+
+    // تخزين بيانات المستخدم
+    localStorage.setItem("user", JSON.stringify({
+      uid: user.uid,
+      role: userData.role,
+      yearId: userData.yearId || null
+    }));
+
+    // توجيه حسب الدور
+    if (userData.role === "admin") {
+      window.location.href = "dashboard.html";
+    } else {
+      window.location.href = "student.html";
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("حدث خطأ أثناء التحقق");
+  }
+});
+</script>
+
+</body>
+</html>
