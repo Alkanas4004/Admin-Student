@@ -2,43 +2,137 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>لوحة التحكم</title>
+<title>Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
-body{background:#0f0f0f;color:#fff;font-family:Cairo;padding:20px}
-input,button{padding:10px;margin:5px}
+*{box-sizing:border-box;font-family:Cairo,sans-serif}
+body{margin:0;background:#0f172a;color:#fff}
+header{background:#020617;padding:15px 25px;display:flex;justify-content:space-between;align-items:center}
+button{background:#ef4444;border:none;padding:8px 15px;border-radius:6px;color:#fff;cursor:pointer}
+.container{padding:25px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px}
+.stat{background:#020617;padding:20px;border-radius:12px}
+.stat h3{margin:0;color:#94a3b8;font-size:14px}
+.stat p{font-size:32px;margin-top:10px;font-weight:bold}
+table{width:100%;border-collapse:collapse;background:#020617;margin-top:15px}
+th,td{padding:10px;text-align:center}
+th{color:#38bdf8}
+.loader{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#020617;font-size:20px}
+.hidden{display:none}
 </style>
 </head>
 
 <body>
-<h2>👨‍💼 لوحة التحكم</h2>
 
-<input id="lecName" placeholder="اسم المحاضرة">
-<input id="videoUrl" placeholder="رابط الفيديو">
-<select id="year">
-  <option value="first">أولى</option>
-  <option value="second">تانية</option>
-</select>
-<button id="add">إضافة</button>
+<div id="loader" class="loader">جاري التحميل...</div>
+
+<header>
+  <h2>لوحة التحكم</h2>
+  <button onclick="logout()">تسجيل خروج</button>
+</header>
+
+<div class="container">
+
+<div class="stats">
+  <div class="stat"><h3>الطلاب</h3><p id="students">0</p></div>
+  <div class="stat"><h3>الامتحانات</h3><p id="exams">0</p></div>
+  <div class="stat"><h3>الفيديوهات</h3><p id="videos">0</p></div>
+  <div class="stat"><h3>النتائج</h3><p id="results">0</p></div>
+</div>
+
+<h3>آخر نتائج الامتحانات</h3>
+<table>
+<thead>
+<tr>
+<th>الطالب</th>
+<th>الامتحان</th>
+<th>الدرجة</th>
+<th>التاريخ</th>
+</tr>
+</thead>
+<tbody id="resultsTable">
+<tr><td colspan="4">لا توجد بيانات</td></tr>
+</tbody>
+</table>
+
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, addDoc, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const app = initializeApp({
-  apiKey:"AIzaSyAFrf9kRQez8ltkvd66_BQZPmARc1fW6y8",
-  projectId:"date-student"
-});
+/* 🔥 Firebase Config (بتاعك) */
+const firebaseConfig = {
+  apiKey: "AIzaSyAFrf9kRQez8ltkvd66_BQZPmARc1fW6y8",
+  authDomain: "date-student.firebaseapp.com",
+  databaseURL: "https://date-student-default-rtdb.firebaseio.com",
+  projectId: "date-student",
+  storageBucket: "date-student.firebasestorage.app",
+  messagingSenderId: "952213529741",
+  appId: "1:952213529741:web:7a8d8da275214b5754eec4",
+  measurementId: "G-CNR9HYEGGF"
+};
 
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 const db = getFirestore(app);
 
-add.onclick = async()=>{
-  await addDoc(collection(db,"lectures"),{
-    name: lecName.value,
-    videoUrl: videoUrl.value,
-    yearId: year.value
+/* 🔐 حماية الصفحة */
+onAuthStateChanged(auth, async (user)=>{
+  if(!user){
+    location.href="login.html";
+    return;
+  }
+  await loadData();
+  document.getElementById("loader").classList.add("hidden");
+});
+
+/* 📊 تحميل البيانات */
+async function loadData(){
+  const studentsSnap = await getDocs(collection(db,"students"));
+  const examsSnap = await getDocs(collection(db,"exams"));
+  const videosSnap = await getDocs(collection(db,"videos"));
+  const resultsSnap = await getDocs(collection(db,"results"));
+
+  students.textContent = studentsSnap.size;
+  exams.textContent = examsSnap.size;
+  videos.textContent = videosSnap.size;
+  results.textContent = resultsSnap.size;
+
+  loadLastResults();
+}
+
+/* 📋 آخر النتائج */
+async function loadLastResults(){
+  const q = query(collection(db,"results"), orderBy("date","desc"), limit(5));
+  const snap = await getDocs(q);
+  const table = document.getElementById("resultsTable");
+  table.innerHTML = "";
+
+  if(snap.empty){
+    table.innerHTML = "<tr><td colspan='4'>لا توجد نتائج</td></tr>";
+    return;
+  }
+
+  snap.forEach(doc=>{
+    const d = doc.data();
+    table.innerHTML += `
+      <tr>
+        <td>${d.studentName || "-"}</td>
+        <td>${d.examName || "-"}</td>
+        <td>${d.score || 0}</td>
+        <td>${d.date?.toDate().toLocaleDateString() || "-"}</td>
+      </tr>`;
   });
-  alert("✔ تم الإضافة");
+}
+
+/* 🚪 Logout */
+window.logout = ()=>{
+  signOut(auth).then(()=>location.href="login.html");
 };
 </script>
+
 </body>
 </html>
