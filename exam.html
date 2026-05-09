@@ -1,1 +1,165 @@
 
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>حل الامتحان</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+*{box-sizing:border-box;font-family:'Cairo',sans-serif}
+body{margin:0;background:#f4f6f8}
+header{
+  background:linear-gradient(135deg,#4f46e5,#6366f1);
+  color:#fff;
+  padding:15px;
+  text-align:center
+}
+.container{
+  max-width:900px;
+  margin:20px auto;
+  background:#fff;
+  padding:20px;
+  border-radius:12px;
+  box-shadow:0 4px 12px rgba(0,0,0,.1)
+}
+.question{
+  font-size:20px;
+  margin-bottom:15px
+}
+.options label{
+  display:block;
+  background:#f1f5f9;
+  padding:10px;
+  border-radius:8px;
+  margin-bottom:10px;
+  cursor:pointer
+}
+.options input{margin-left:8px}
+.nav{
+  display:flex;
+  justify-content:space-between;
+  margin-top:20px
+}
+button{
+  padding:10px 20px;
+  border:none;
+  border-radius:8px;
+  background:#4f46e5;
+  color:#fff;
+  cursor:pointer
+}
+button:disabled{background:#ccc}
+.result{
+  text-align:center;
+  font-size:22px;
+  color:#16a34a
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h2>📝 حل الامتحان</h2>
+</header>
+
+<div class="container" id="examBox">
+  جاري تحميل الامتحان...
+</div>
+
+<!-- FIREBASE -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth,onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore,collection,query,where,getDocs,addDoc,doc,getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAFrf9kRQez8ltkvd66_BQZPmARc1fW6y8",
+  authDomain: "date-student.firebaseapp.com",
+  projectId: "date-student",
+  storageBucket: "date-student.firebasestorage.app",
+  messagingSenderId: "952213529741",
+  appId: "1:952213529741:web:7a8d8da275214b5754eec4"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const box = document.getElementById("examBox");
+const examId = new URLSearchParams(location.search).get("examId");
+
+let questions = [];
+let answers = {};
+let index = 0;
+
+onAuthStateChanged(auth, async user=>{
+  if(!user){location.href="login.html";return;}
+
+  const q = query(collection(db,"questions"), where("examId","==",examId));
+  const snap = await getDocs(q);
+
+  if(snap.empty){
+    box.innerHTML="لا يوجد أسئلة";
+    return;
+  }
+
+  snap.forEach(d=>questions.push({id:d.id,...d.data()}));
+  render();
+});
+
+function render(){
+  const q = questions[index];
+  box.innerHTML = `
+    <div class="question">${index+1} - ${q.text}</div>
+    <div class="options">
+      ${q.options.map(o=>`
+        <label>
+          <input type="radio" name="opt" value="${o}" ${answers[q.id]==o?'checked':''}>
+          ${o}
+        </label>
+      `).join("")}
+    </div>
+
+    <div class="nav">
+      <button onclick="prev()" ${index==0?'disabled':''}>السابق</button>
+      ${index==questions.length-1
+        ?'<button onclick="submitExam()">تسليم</button>'
+        :'<button onclick="next()">التالي</button>'}
+    </div>
+  `;
+
+  document.querySelectorAll("input[name=opt]").forEach(i=>{
+    i.onchange=()=>answers[q.id]=i.value;
+  });
+}
+
+window.next=()=>{index++;render()}
+window.prev=()=>{index--;render()}
+
+window.submitExam = async ()=>{
+  let score = 0;
+  questions.forEach(q=>{
+    if(answers[q.id] === q.correct) score++;
+  });
+
+  await addDoc(collection(db,"results"),{
+    examId,
+    score,
+    total:questions.length,
+    date:new Date(),
+    student:auth.currentUser.uid
+  });
+
+  box.innerHTML = `
+    <div class="result">
+      ✅ انتهى الامتحان<br>
+      درجتك: ${score} / ${questions.length}
+    </div>
+  `;
+}
+</script>
+
+</body>
+</html>
